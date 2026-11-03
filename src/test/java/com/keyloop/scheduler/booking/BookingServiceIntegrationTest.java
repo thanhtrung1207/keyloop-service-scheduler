@@ -111,6 +111,14 @@ class BookingServiceIntegrationTest {
     }
 
     @Test
+    void neverAllocatesBayUnderMaintenance() {
+        jdbc.sql("update service_bays set status = 'MAINTENANCE'").update();
+
+        assertRejection(command(DEALERSHIP_ID, OIL_SERVICE_ID, VIN, START),
+                RejectionReason.NO_SERVICE_BAY_AVAILABLE);
+    }
+
+    @Test
     void rejectsWhenNoActiveTechnicianHasRequiredSkill() {
         jdbc.sql("update technicians set status = 'INACTIVE' where id in (:alex, :sam)")
                 .param("alex", ALEX)

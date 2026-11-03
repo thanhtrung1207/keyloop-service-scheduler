@@ -17,6 +17,7 @@ import java.util.regex.Pattern;
 @Service
 public class BookingService {
     private static final Pattern VIN_PATTERN = Pattern.compile("^[A-HJ-NPR-Z0-9]{17}$");
+    private static final Instant MAX_SUPPORTED_TIME = Instant.parse("9999-12-31T23:59:59.999999Z");
 
     private final BookingRepository repository;
     private final Clock clock;
@@ -41,7 +42,15 @@ public class BookingService {
         if (start.isBefore(clock.instant())) {
             throw rejected(RejectionReason.START_TIME_IN_PAST, "Appointment start time must be in the future");
         }
+        if (start.isAfter(MAX_SUPPORTED_TIME)) {
+            throw rejected(RejectionReason.INVALID_START_TIME,
+                    "Appointment start time must be on or before 9999-12-31T23:59:59.999999Z");
+        }
         Instant end = start.plus(serviceType.durationMinutes(), ChronoUnit.MINUTES);
+        if (end.isAfter(MAX_SUPPORTED_TIME)) {
+            throw rejected(RejectionReason.INVALID_START_TIME,
+                    "Appointment must end on or before 9999-12-31T23:59:59.999999Z");
+        }
         TimeSlot slot = new TimeSlot(start, end);
 
         repository.lockDealership(dealership.id());

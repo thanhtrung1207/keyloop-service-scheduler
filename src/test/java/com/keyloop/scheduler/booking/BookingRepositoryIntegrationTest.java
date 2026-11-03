@@ -87,6 +87,8 @@ class BookingRepositoryIntegrationTest {
         assertThat(repository.findFreeBay(DEALERSHIP_ID, adjacent).orElseThrow().id()).isEqualTo(BAY_ONE);
         assertThat(repository.findFreeTechnician(DEALERSHIP_ID, "OIL_SERVICE", adjacent)
                 .orElseThrow().id()).isEqualTo(SAM);
+        insertAppointment(UUID.randomUUID(), BAY_ONE, SAM, vin, TEN, ELEVEN);
+        assertThat(jdbc.sql("select count(*) from appointments").query(Long.class).single()).isEqualTo(2);
     }
 
     @Test
@@ -96,6 +98,24 @@ class BookingRepositoryIntegrationTest {
 
         assertThatThrownBy(() -> insertAppointment(UUID.randomUUID(), BAY_ONE, SAM,
                 "1HGCM82633A004352", Instant.parse("2030-01-07T09:30:00Z"), ELEVEN))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void databaseRejectsOverlappingConfirmedAppointmentsForSameTechnician() {
+        insertAppointment(UUID.randomUUID(), BAY_ONE, SAM, "WBA3A5C51CF256789", NINE, TEN);
+
+        assertThatThrownBy(() -> insertAppointment(UUID.randomUUID(), BAY_TWO, SAM,
+                "1HGCM82633A004352", Instant.parse("2030-01-07T09:30:00Z"), ELEVEN))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void databaseRejectsOverlappingConfirmedAppointmentsForSameVinAcrossResources() {
+        insertAppointment(UUID.randomUUID(), BAY_ONE, ALEX, "WBA3A5C51CF256789", NINE, TEN);
+
+        assertThatThrownBy(() -> insertAppointment(UUID.randomUUID(), BAY_TWO, SAM,
+                "WBA3A5C51CF256789", Instant.parse("2030-01-07T09:30:00Z"), ELEVEN))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 

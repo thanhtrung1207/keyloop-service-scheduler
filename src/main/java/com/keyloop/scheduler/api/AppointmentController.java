@@ -45,7 +45,7 @@ public class AppointmentController {
 
     public record CreateAppointmentRequest(
             @NotNull UUID dealershipId,
-            @NotBlank @Size(max = 80) String customerId,
+            @NotBlank @Size(max = 80) @Pattern(regexp = "^[^\\x00]+$", message = "must not contain NUL") String customerId,
             @NotBlank @Pattern(regexp = "^[A-HJ-NPR-Z0-9]{17}$") String vehicleVin,
             @NotNull UUID serviceTypeId,
             @NotNull Instant desiredStartTime) { }

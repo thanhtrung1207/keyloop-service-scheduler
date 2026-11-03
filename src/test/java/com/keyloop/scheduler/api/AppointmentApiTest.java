@@ -60,6 +60,7 @@ class AppointmentApiTest {
     @BeforeEach
     void resetDemoState() {
         jdbc.sql("delete from appointments").update();
+        jdbc.sql("update service_bays set status = 'ACTIVE'").update();
         jdbc.sql("update technicians set status = 'ACTIVE'").update();
     }
 
@@ -119,6 +120,85 @@ class AppointmentApiTest {
                         .content(request))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errorCode").value("VALIDATION_FAILED"));
+    }
+
+    @Test
+    void rejectsCustomerIdContainingNulAsClientError() throws Exception {
+        String request = VALID_REQUEST.replace("CUST-API", "CUST\\u0000X");
+
+        mvc.perform(post("/api/v1/appointments")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("VALIDATION_FAILED"));
+    }
+
+    @Test
+    void rejectsTimestampBeyondSupportedYearAsClientError() throws Exception {
+        String request = VALID_REQUEST.replace("2030-01-07T09:00:00Z", "+10000-01-07T09:00:00Z");
+
+        mvc.perform(post("/api/v1/appointments")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("INVALID_START_TIME"));
+    }
+
+    @Test
+    void rejectsAppointmentEndingBeyondSupportedYearAsClientError() throws Exception {
+        String request = VALID_REQUEST.replace("2030-01-07T09:00:00Z", "9999-12-31T23:30:00Z");
+
+        mvc.perform(post("/api/v1/appointments")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("INVALID_START_TIME"));
+    }
+
+    @Test
+    void returnsNotFoundForUnknownDealership() throws Exception {
+        String request = VALID_REQUEST.replace("11111111-1111-1111-1111-111111111111",
+                "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+
+        mvc.perform(post("/api/v1/appointments")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.errorCode").value("DEALERSHIP_NOT_FOUND"));
+    }
+
+    @Test
+    void returnsNotFoundForUnknownServiceType() throws Exception {
+        String request = VALID_REQUEST.replace("44444444-4444-4444-4444-444444444401",
+                "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+
+        mvc.perform(post("/api/v1/appointments")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.errorCode").value("SERVICE_TYPE_NOT_FOUND"));
+    }
+
+    @Test
+    void returnsConflictWhenNoBayIsAvailable() throws Exception {
+        jdbc.sql("update service_bays set status = 'MAINTENANCE'").update();
+
+        mvc.perform(post("/api/v1/appointments")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(VALID_REQUEST))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.errorCode").value("NO_SERVICE_BAY_AVAILABLE"));
+    }
+
+    @Test
+    void returnsConflictWhenNoQualifiedTechnicianIsAvailable() throws Exception {
+        jdbc.sql("update technicians set status = 'INACTIVE'").update();
+
+        mvc.perform(post("/api/v1/appointments")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(VALID_REQUEST))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.errorCode").value("NO_QUALIFIED_TECHNICIAN_AVAILABLE"));
     }
 
     @Test

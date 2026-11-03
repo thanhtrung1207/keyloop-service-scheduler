@@ -75,12 +75,13 @@ docker run --rm \
 
 The tests cover interval boundaries, migrations and seed data, allocation choices, VIN and resource conflicts, API validation and status mapping, retrieval, and concurrent allocation against PostgreSQL 16.
 
-Verified in the Java 21 container: `./mvnw clean verify` completed with 28 tests, 0 failures, and 0 errors. The Compose demo returned `201 Created` for booking, `200 OK` for retrieval, and `409 Conflict` with `VEHICLE_ALREADY_BOOKED` for the overlapping repeat request.
+Verified in the Java 21 container: `./mvnw clean verify` completed with 40 tests, 0 failures, and 0 errors. The Compose demo returned `201 Created` for booking, `200 OK` for retrieval, and `409 Conflict` with `VEHICLE_ALREADY_BOOKED` for the overlapping repeat request.
 
 ## MVP assumptions and limitations
 
 - Service duration and required technician skill are fixed by each service type.
 - Appointments use half-open UTC intervals, so back-to-back bookings are allowed.
+- Request timestamps and calculated appointment ends must be no later than `9999-12-31T23:59:59.999999Z`, keeping values within the supported database/runtime range.
 - The dealership timezone and operating hours are stored, but opening-hours and DST validation are not implemented in this MVP.
 - There is no availability search endpoint, cancellation, rescheduling, authentication, customer/vehicle master-data integration, Redis, or Kafka.
 - Demo catalog records and Compose credentials are local-only.

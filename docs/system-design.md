@@ -92,7 +92,7 @@ PostgreSQL `btree_gist` exclusion constraints prevent overlapping confirmed appo
 ## Booking data flow
 
 1. `POST /api/v1/appointments` receives dealership, customer, VIN, service type, and desired start time.
-2. The API validates required fields, UUIDs, ISO-8601 timestamp, and VIN format.
+2. The API validates required fields, UUIDs, ISO-8601 timestamp, customer ID text, and VIN format. Booking starts and calculated ends beyond `9999-12-31T23:59:59.999999Z` are rejected as invalid input.
 3. `BookingService` loads dealership and service type, derives the full interval from the service duration, and rejects a past start.
 4. A PostgreSQL transaction takes a transaction-scoped advisory lock for the dealership. This serializes resource allocation for concurrent bookings at that dealership.
 5. The service rejects an overlapping VIN, then selects the first free active bay by code and the free active qualified technician with the fewest skills (name and ID break ties).
@@ -139,7 +139,8 @@ The MVP uses Spring Boot console logs for startup and error diagnostics and a Po
 - Unit tests cover overlap, adjacency, containment, and invalid intervals.
 - PostgreSQL integration tests cover migrations, seeded catalog, allocation order, half-open conflicts, and exclusion constraints.
 - Booking service tests cover success, invalid VIN, past start, unknown references, VIN overlap, no bay, no qualified technician, and retrieval.
-- MockMvc tests cover success, malformed input, validation, status mapping, and RFC 9457 `errorCode` responses.
+- MockMvc tests cover success, malformed input, NUL customer IDs, unsupported timestamp ranges, unknown references, unavailable resources, and RFC 9457 `errorCode` responses.
+- PostgreSQL tests directly cover bay, technician, and VIN exclusion constraints, adjacent intervals, one-resource contention, and concurrent same-VIN requests across dealerships.
 - A concurrency test removes the exclusion constraints only in its isolated test database, then proves the dealership lock uses two available resource pairs under twelve simultaneous requests. Separate repository tests cover the constraints themselves.
 
 ## Future work
