@@ -129,7 +129,9 @@ Expected: Testcontainers starts PostgreSQL, Flyway applies both migrations, and 
 
 **Interfaces:**
 - `TimeSlot(Instant start, Instant end)` rejects null or non-positive intervals; `overlaps(TimeSlot other)` uses `start < other.end && end > other.start`.
-- `BookingRepository` exposes catalog lookup, `lockDealership(UUID)`, VIN conflict lookup, free bay selection, free qualified technician selection, appointment insert, and appointment lookup.
+- `Dealership(UUID id, String name, ZoneId timezone, LocalTime openTime, LocalTime closeTime)`.
+- `ServiceType(UUID id, String code, String name, int durationMinutes, String requiredSkill)`.
+- `BookingRepository.findDealership(UUID)` and `findServiceType(UUID)` return `Optional` values; `lockDealership(UUID)` obtains a transaction-scoped lock; `hasVinOverlap(String, TimeSlot)` checks a confirmed VIN overlap; `findFreeBay(UUID, TimeSlot)` and `findFreeTechnician(UUID, String, TimeSlot)` return optional allocation records ordered as specified below.
 
 - [ ] **Step 1: Write interval boundary tests**
 
