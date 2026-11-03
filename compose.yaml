@@ -80,7 +80,7 @@ services:
       SCHEDULER_REDIS_PORT: 6379
       SCHEDULER_CACHE_ENABLED: "true"
     ports:
-      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:${SCHEDULER_HTTP_PORT:-8080}:8080"
 
 volumes:
   scheduler-postgres:

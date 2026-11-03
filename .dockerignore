@@ -1,0 +1,7 @@
+.git
+.idea
+.tools
+.superpowers
+target
+.env
+*.iml

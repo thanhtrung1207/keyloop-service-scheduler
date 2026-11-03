@@ -1,5 +1,7 @@
 # Unified Service Scheduler MVP Design
 
+> Historical Codex narrowing, superseded by the user-approved [review completion design](2026-11-03-review-completion-design.md). The current scope retains Redis, Kafka and Kafka UI.
+
 ## Intent
 
 Deliver a working backend for Keyloop Scenario A by the interview deadline on 2026-11-04. The backend accepts an appointment request for a customer, vehicle, service type, dealership, and desired start time; allocates an available service bay and a qualified technician for the full service duration; and persists the confirmed appointment.
@@ -39,7 +41,7 @@ The attached Keyloop challenge PDF is the requirements source. This is a one-day
 1. **Full Qoder plan:** PostgreSQL, Redis, Kafka/outbox, availability caching, observability stack, and extensive integration scenarios. This offers more infrastructure depth but adds setup and failure modes that are not required to demonstrate the core challenge within one day.
 2. **Focused backend MVP (selected):** PostgreSQL-backed REST API, deterministic bay/technician allocation, database overlap protection, core tests, OpenAPI or curl demo, and README. This directly satisfies the required backend criteria and leaves time to verify the booking flow.
 
-The user selected the focused backend MVP.
+Codex initially narrowed implementation to the focused backend MVP. The user subsequently corrected that scope and explicitly required real Redis/Kafka/Kafka UI integration; the approved review completion design now governs implementation.
 
 ## Proposed architecture
 
