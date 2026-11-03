@@ -6,7 +6,7 @@
 
 **Architecture:** Spring MVC validates REST requests and delegates to a booking service. PostgreSQL stores catalog and appointments; one transaction-level dealership lock serializes local allocation, and GiST exclusion constraints protect confirmed bay, technician, and VIN intervals. Flyway owns schema and demo seed data.
 
-**Tech Stack:** Java 21, Spring Boot 4.1.2, Spring MVC, Bean Validation, Spring JDBC, PostgreSQL 16, Flyway, JUnit 5, Spring Boot Test, and Testcontainers PostgreSQL. Add Swagger UI only if it resolves cleanly with this Spring Boot line; curl examples remain the required demo path.
+**Tech Stack:** Java 21, Spring Boot 4.1.2, Spring MVC, Bean Validation, Spring JDBC, PostgreSQL 16, Flyway, JUnit 5, Spring Boot Test, and Testcontainers PostgreSQL. Use a Java 21 Docker build/runtime so the project is runnable despite the host's Java 8 default. Add Swagger UI only if it resolves cleanly with this Spring Boot line; curl examples remain the required demo path.
 
 **Spec:** `docs/superpowers/specs/2026-11-03-scheduler-mvp-design.md`
 
@@ -34,6 +34,7 @@
 
 ```text
 pom.xml                                      Maven build and dependencies
+Dockerfile                                   Java 21 application image
 mvnw, mvnw.cmd, .mvn/wrapper/*              Maven Wrapper
 src/main/java/com/keyloop/scheduler/
   ServiceSchedulerApplication.java           Spring Boot entry point
@@ -79,13 +80,14 @@ Configure PostgreSQL from `SCHEDULER_DB_URL`, `SCHEDULER_DB_USERNAME`, and `SCHE
 
 - [ ] **Step 3: Compile the scaffold**
 
-Run: `./mvnw -DskipTests compile`
-Expected: PASS on a Java 21 runtime. The database-backed context is exercised in Task 2 after PostgreSQL exists.
+Run: `docker run --rm -v "$PWD":/workspace -v scheduler-maven-cache:/root/.m2 -w /workspace maven:3.9-eclipse-temurin-21 ./mvnw -DskipTests compile`
+Expected: PASS using Java 21 without installing software on the host. The database-backed context is exercised in Task 2 after PostgreSQL exists.
 
 ### Task 2: Add PostgreSQL schema, seed data, and local Compose
 
 **Files:**
 - Create: `compose.yaml`
+- Create: `Dockerfile`
 - Create: `src/main/resources/db/migration/V1__schema.sql`
 - Create: `src/main/resources/db/migration/V2__seed.sql`
 - Test: `src/test/java/com/keyloop/scheduler/booking/SchemaIntegrationTest.java`
@@ -106,9 +108,9 @@ Use UUID primary keys; store dealership IANA timezone and daily opening/closing 
 
 Seed one dealership, two service types, two active bays, and active technicians with different skills. Ensure one service request can succeed and the catalog also demonstrates no-qualified-technician cases.
 
-- [ ] **Step 4: Add localhost-only PostgreSQL Compose service**
+- [ ] **Step 4: Add localhost-only PostgreSQL and application Compose services**
 
-Publish PostgreSQL only on `127.0.0.1:5432`, use a named local volume and a readiness healthcheck. Keep credentials local/demo-only and overridable by environment.
+Publish PostgreSQL only on `127.0.0.1:5432`, use a named local volume and a readiness healthcheck. Build the application as a Java 21 runtime image and expose its API only on `127.0.0.1:8080`; configure the database URL on the Compose network and wait for PostgreSQL health. Keep credentials local/demo-only and overridable by environment.
 
 - [ ] **Step 5: Verify migration and seed load**
 
@@ -242,16 +244,16 @@ Document Java 21, Docker Compose PostgreSQL startup, `./mvnw test`, application 
 
 - [ ] **Step 3: Run full automated acceptance and whitespace check**
 
-Run: `./mvnw clean verify`
-Expected: all unit, database/API, and concurrency tests pass.
+Run: `docker run --rm -v "$PWD":/workspace -v scheduler-maven-cache:/root/.m2 -v /var/run/docker.sock:/var/run/docker.sock -w /workspace maven:3.9-eclipse-temurin-21 ./mvnw clean verify`
+Expected: all unit, database/API, and concurrency tests pass using the mounted local Docker engine.
 
 - [ ] **Step 4: Run the local demo**
 
-Start PostgreSQL and the application using only the README commands. Create and retrieve an appointment; send an overlapping request and confirm a client conflict response. Record actual command outcomes in the README only if useful and accurate.
+Start PostgreSQL and the application using `docker compose up --build`. Create and retrieve an appointment; send an overlapping request and confirm a client conflict response. Record actual command outcomes in the README only if useful and accurate.
 
 ## Self-review
 
 - Spec coverage: create and retrieve REST API, persistent catalog/appointment storage, full-interval bay and qualified technician allocation, VIN/resource overlap protection, tests, local run/demo, and honest system design/AI narrative are covered by Tasks 1–7.
 - Scope: Redis, Kafka, frontend, auth, and separate monitoring are explicitly omitted per the approved MVP.
 - Execution: tasks depend on the interfaces established in prior tasks and each has a focused test command.
-- Deadline risk: if Testcontainers cannot run on the host, keep all unit tests runnable, use the local Compose PostgreSQL for integration/manual acceptance, and report the unavailable check precisely rather than claiming it passed.
+- Deadline risk: if Testcontainers cannot reach the mounted Docker socket, keep unit tests runnable and validate integration/manual acceptance against the local Compose PostgreSQL with a documented test profile; report any unavailable check precisely rather than claiming it passed.
