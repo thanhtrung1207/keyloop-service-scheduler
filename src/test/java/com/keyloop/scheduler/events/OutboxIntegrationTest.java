@@ -5,8 +5,11 @@ import com.keyloop.scheduler.booking.BookingCommand;
 import com.keyloop.scheduler.booking.BookingService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -47,7 +50,8 @@ class OutboxIntegrationTest {
     }
 
     @Test
-    void failedOutboxInsertRollsBackAppointment() {
+    @ExtendWith(OutputCaptureExtension.class)
+    void failedOutboxInsertRollsBackAppointment(CapturedOutput output) {
         jdbc.sql("""
                 create function reject_test_outbox() returns trigger language plpgsql as $$
                 begin raise exception 'outbox insert failure' using errcode = '23514'; end; $$
@@ -60,10 +64,21 @@ class OutboxIntegrationTest {
             assertThatThrownBy(() -> book("WBA3A5C51CF256789")).isInstanceOf(RuntimeException.class);
             assertThat(count("appointments")).isZero();
             assertThat(count("outbox_events")).isZero();
+            assertThat(output.toString()).doesNotContain("booking_confirmed");
         } finally {
             jdbc.sql("drop trigger reject_outbox on outbox_events").update();
             jdbc.sql("drop function reject_test_outbox()").update();
         }
+    }
+
+    @Test
+    @ExtendWith(OutputCaptureExtension.class)
+    void logsConfirmedDecisionAfterCommitWithoutCustomerOrVin(CapturedOutput output) {
+        var appointment = book("WBA3A5C51CF256789");
+
+        assertThat(count("appointments")).isEqualTo(1);
+        assertThat(output.toString()).contains("booking_confirmed", appointment.id().toString())
+                .doesNotContain("CUST-OUTBOX", "WBA3A5C51CF256789");
     }
 
     @Test

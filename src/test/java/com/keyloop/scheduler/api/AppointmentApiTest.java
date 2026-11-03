@@ -2,9 +2,12 @@ package com.keyloop.scheduler.api;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -79,6 +82,25 @@ class AppointmentApiTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").exists())
                 .andExpect(jsonPath("$.vehicleVin").value(VIN));
+    }
+
+    @Test
+    void exposesAppointmentContractAndSwaggerUi() throws Exception {
+        mvc.perform(get("/v3/api-docs"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paths['/api/v1/appointments'].post.responses['201']").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/appointments'].post.responses['422']").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/appointments/{id}'].get").exists());
+        mvc.perform(get("/swagger-ui.html"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(header().string("Location", org.hamcrest.Matchers.containsString("/swagger-ui/index.html")));
+    }
+
+    @Test
+    void healthReflectsPostgresWithoutRequiringOptionalKafkaOrRedis() throws Exception {
+        mvc.perform(get("/actuator/health"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("UP"));
     }
 
     @Test
@@ -220,12 +242,16 @@ class AppointmentApiTest {
     }
 
     @Test
-    void rejectsBookingAtTwoAmLondonWithOutsideOperatingHours() throws Exception {
+    @ExtendWith(OutputCaptureExtension.class)
+    void rejectsBookingAtTwoAmLondonWithOutsideOperatingHours(CapturedOutput output) throws Exception {
         mvc.perform(post("/api/v1/appointments")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(VALID_REQUEST.replace("2030-01-07T09:00:00Z", "2030-01-07T02:00:00Z")))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.errorCode").value("OUTSIDE_OPERATING_HOURS"));
+        org.assertj.core.api.Assertions.assertThat(output.toString())
+                .contains("booking_rejected", "OUTSIDE_OPERATING_HOURS")
+                .doesNotContain(VIN, "CUST-API");
     }
 
     @Test

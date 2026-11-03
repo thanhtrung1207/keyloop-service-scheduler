@@ -6,9 +6,13 @@ import com.keyloop.scheduler.catalog.Dealership;
 import com.keyloop.scheduler.catalog.ServiceType;
 import com.keyloop.scheduler.catalog.CatalogService;
 import com.keyloop.scheduler.events.OutboxRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -18,6 +22,7 @@ import java.util.regex.Pattern;
 
 @Service
 public class BookingService {
+    private static final Logger log = LoggerFactory.getLogger(BookingService.class);
     private static final Pattern VIN_PATTERN = Pattern.compile("^[A-HJ-NPR-Z0-9]{17}$");
     private static final Instant MAX_SUPPORTED_TIME = Instant.parse("9999-12-31T23:59:59.999999Z");
 
@@ -88,6 +93,14 @@ public class BookingService {
         } catch (DataIntegrityViolationException error) {
             throw translateExclusionConstraint(error);
         }
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                log.info("booking_confirmed appointmentId={} dealershipId={} serviceType={} bayCode={} technicianId={}",
+                        appointment.id(), dealership.id(), serviceType.code(), bay.bayCode(), technician.id());
+            }
+        });
 
         return appointment;
     }

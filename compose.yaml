@@ -3,12 +3,12 @@ services:
     image: postgres:16-alpine
     environment:
       POSTGRES_DB: scheduler
-      POSTGRES_USER: scheduler
-      POSTGRES_PASSWORD: scheduler
+      POSTGRES_USER: ${SCHEDULER_DB_USERNAME:-scheduler}
+      POSTGRES_PASSWORD: ${SCHEDULER_DB_PASSWORD:-scheduler}
     ports:
       - "127.0.0.1:5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U scheduler -d scheduler"]
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d scheduler"]
       interval: 2s
       timeout: 2s
       retries: 30
@@ -71,8 +71,9 @@ services:
         condition: service_healthy
     environment:
       SCHEDULER_DB_URL: jdbc:postgresql://postgres:5432/scheduler
-      SCHEDULER_DB_USERNAME: scheduler
-      SCHEDULER_DB_PASSWORD: scheduler
+      SCHEDULER_DB_USERNAME: ${SCHEDULER_DB_USERNAME:-scheduler}
+      SCHEDULER_DB_PASSWORD: ${SCHEDULER_DB_PASSWORD:-scheduler}
+      SERVER_ADDRESS: 0.0.0.0
       SCHEDULER_KAFKA_BOOTSTRAP_SERVERS: kafka:19092
       SCHEDULER_EVENTS_ENABLED: "true"
       SCHEDULER_REDIS_HOST: redis

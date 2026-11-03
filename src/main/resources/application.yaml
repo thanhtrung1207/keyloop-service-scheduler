@@ -4,7 +4,7 @@ spring:
   datasource:
     url: ${SCHEDULER_DB_URL:jdbc:postgresql://localhost:5432/scheduler}
     username: ${SCHEDULER_DB_USERNAME:scheduler}
-    password: ${SCHEDULER_DB_PASSWORD:scheduler}
+    password: ${SCHEDULER_DB_PASSWORD:}
     hikari:
       maximum-pool-size: 10
   flyway:
@@ -45,3 +45,26 @@ scheduler:
 
 server:
   port: ${SERVER_PORT:8080}
+  address: ${SERVER_ADDRESS:127.0.0.1}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+      group:
+        readiness:
+          include: db
+  health:
+    redis:
+      enabled: false
+    kafka:
+      enabled: false
+
+logging:
+  structured:
+    format:
+      console: ecs

@@ -14,6 +14,16 @@ docker compose up --build
 
 The API is available at `http://localhost:8080`. PostgreSQL is available on `localhost:5432`. Both ports are bound to localhost only. Flyway creates the schema and local demo catalog on application startup.
 
+Swagger UI: `http://localhost:8080/swagger-ui.html`; OpenAPI: `/v3/api-docs`; health: `/actuator/health`.
+For a native Java 21 launch, start this project's infrastructure and pass the local database password explicitly:
+
+```bash
+docker compose up -d postgres redis kafka kafka-ui
+SCHEDULER_DB_PASSWORD=scheduler .tools/mvn21 spring-boot:run
+```
+
+`.tools/mvn21` is a local helper on this workstation; with a Java 21 `JAVA_HOME`, use `./mvnw spring-boot:run` instead.
+
 Stop the stack and preserve demo data:
 
 ```bash
