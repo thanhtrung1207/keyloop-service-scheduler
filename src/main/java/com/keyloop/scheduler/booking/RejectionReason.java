@@ -1,0 +1,12 @@
+package com.keyloop.scheduler.booking;
+
+public enum RejectionReason {
+    DEALERSHIP_NOT_FOUND,
+    SERVICE_TYPE_NOT_FOUND,
+    START_TIME_IN_PAST,
+    INVALID_VIN,
+    VEHICLE_ALREADY_BOOKED,
+    NO_SERVICE_BAY_AVAILABLE,
+    NO_QUALIFIED_TECHNICIAN_AVAILABLE,
+    APPOINTMENT_NOT_FOUND
+}
