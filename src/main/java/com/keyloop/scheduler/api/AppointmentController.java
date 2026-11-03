@@ -4,6 +4,7 @@ import com.keyloop.scheduler.booking.Appointment;
 import com.keyloop.scheduler.booking.BookingCommand;
 import com.keyloop.scheduler.booking.BookingService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -36,11 +37,16 @@ public class AppointmentController {
     @PostMapping
     @Operation(summary = "Book a vehicle service appointment")
     @ApiResponses({
-            @ApiResponse(responseCode = "201", description = "Confirmed with an allocated bay and technician"),
-            @ApiResponse(responseCode = "400", description = "Invalid request field or unsupported timestamp range"),
-            @ApiResponse(responseCode = "404", description = "Unknown dealership or service type"),
-            @ApiResponse(responseCode = "409", description = "Vehicle overlap or no eligible resource available"),
-            @ApiResponse(responseCode = "422", description = "Start in the past or interval outside local opening hours")
+            @ApiResponse(responseCode = "201", description = "Confirmed with an allocated bay and technician",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Appointment.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid request field or unsupported timestamp range",
+                    content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ApiProblem.class))),
+            @ApiResponse(responseCode = "404", description = "Unknown dealership or service type",
+                    content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ApiProblem.class))),
+            @ApiResponse(responseCode = "409", description = "Vehicle overlap or no eligible resource available",
+                    content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ApiProblem.class))),
+            @ApiResponse(responseCode = "422", description = "Start in the past or interval outside local opening hours",
+                    content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ApiProblem.class)))
     })
     public ResponseEntity<Appointment> create(@Valid @RequestBody CreateAppointmentRequest request) {
         Appointment appointment = bookingService.book(new BookingCommand(
@@ -52,8 +58,10 @@ public class AppointmentController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Read a confirmed appointment")
-    @ApiResponses({@ApiResponse(responseCode = "200", description = "Appointment found"),
-            @ApiResponse(responseCode = "404", description = "Unknown appointment")})
+    @ApiResponses({@ApiResponse(responseCode = "200", description = "Appointment found",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = Appointment.class))),
+            @ApiResponse(responseCode = "404", description = "Unknown appointment",
+                    content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ApiProblem.class)))})
     public Appointment get(@PathVariable UUID id) {
         return bookingService.get(id);
     }

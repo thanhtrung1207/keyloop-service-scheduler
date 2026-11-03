@@ -91,11 +91,13 @@ class KafkaOutboxIntegrationTest {
         config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, KAFKA.getBootstrapServers());
         config.put(ConsumerConfig.GROUP_ID_CONFIG, "acceptance-" + UUID.randomUUID());
         config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        config.put(ConsumerConfig.ALLOW_AUTO_CREATE_TOPICS_CONFIG, false);
         config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         AtomicReference<ConsumerRecord<String, String>> received = new AtomicReference<>();
         try (var consumer = new KafkaConsumer<String, String>(config)) {
-            assertThat(consumer.partitionsFor(TOPIC)).hasSize(3);
+            await().atMost(Duration.ofSeconds(15)).ignoreExceptions().untilAsserted(() ->
+                    assertThat(consumer.partitionsFor(TOPIC, Duration.ofSeconds(2))).hasSize(3));
             consumer.subscribe(List.of(TOPIC));
             await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
                 for (var record : consumer.poll(Duration.ofMillis(300))) {

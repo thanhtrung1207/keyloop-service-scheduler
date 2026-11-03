@@ -20,6 +20,9 @@ spring:
     admin:
       fail-fast: false
       operation-timeout: 3s
+      properties:
+        request.timeout.ms: 3000
+        default.api.timeout.ms: 3000
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
@@ -34,6 +37,8 @@ spring:
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       auto-offset-reset: earliest
       enable-auto-commit: false
+      properties:
+        allow.auto.create.topics: false
 
 scheduler:
   cache:

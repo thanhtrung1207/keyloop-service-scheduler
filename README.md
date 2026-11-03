@@ -116,7 +116,7 @@ docker run --rm \
   ./mvnw clean verify
 ```
 
-The latest completed stage ran **73 tests, 0 failures/errors/skips**. Tests cover hours and DST, overlap boundaries, active/qualified resources, concurrency, transactional outbox rollback/leases/fencing/retries, real Kafka delivery/outage, Redis TTL/hit/corruption/outage, API validation, Swagger/health and redacted after-commit decision logs. Dedicated tests start isolated PostgreSQL/Kafka/Redis containers; other tests disable async delivery/cache to avoid requiring an external stack.
+The final full verification ran **74 tests, 0 failures/errors/skips**. Tests cover hours and DST, overlap boundaries, active/qualified resources, concurrency, transactional outbox rollback/leases/fencing/retries, real Kafka delivery/outage/startup recovery, Redis TTL/hit/corruption/outage, API validation, Swagger/health and redacted after-commit decision logs. Dedicated tests start isolated PostgreSQL/Kafka/Redis containers; other tests disable async delivery/cache to avoid requiring an external stack.
 
 ## Assumptions and remaining design work
 

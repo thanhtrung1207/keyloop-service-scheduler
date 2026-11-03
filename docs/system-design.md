@@ -161,8 +161,9 @@ This preserves the v2.0 target view; availability/idempotency cache paths are De
 | **AvailabilityService + AvailabilityCache (Designed-only)** | Proposed date slot calculation and versioned cache invalidation on booking/cancel. |
 | **IdempotencyService (Designed-only)** | Proposed Redis replay cache and authoritative PostgreSQL unique key; neither exists in the current schema. |
 | **OutboxRepository / OutboxRelay (Implemented)** | Every 500 ms drains at most 10 events, claiming one per short transaction; publishes outside the transaction; then token-fenced mark/retry. Reclaims leases after 30 s and fails after 10 attempts. Claim-one avoids later rows consuming their leases while earlier sends wait. |
+| **KafkaTopicProvisioner (Implemented)** | Asynchronously creates/reconciles the three-partition topic before relay claims. Failed provisioning retries with bounded KafkaAdmin timeouts; HTTP startup and booking do not wait for it. Consumer auto-creation is disabled, and send failures invalidate cached readiness. |
 | **AppointmentEventsLoggingConsumer** | Demo downstream consumer (group `notification-service-demo`); proves end-to-end delivery and shows consumer lag in Kafka UI. |
-| **Kafka UI (kafbat)** | Browser view of topic messages: timestamp, partition/offset, key, headers (`ce_type`, `traceparent`), JSON body. |
+| **Kafka UI (kafbat)** | Browser view of topic messages: timestamp, partition/offset, key, headers (`ce_type`, `ce_id`), JSON body; trace propagation remains Designed-only. |
 
 ---
 
@@ -414,6 +415,8 @@ sequenceDiagram
 
 The relay claims one event at a time, drains at most ten per invocation, waits at most five seconds for the send future, and uses producer max-block/request/delivery bounds of 3/3/4 seconds. Retry backoff is 1, 2, 4, 8, 16, then 30 seconds; attempts count claims. Expired final leases become FAILED. A stale worker's token cannot update a replacement claim. Publish-then-crash can still duplicate delivery; producer idempotence does not remove application-level outbox replays. FAILED rows remain for inspection; a replay endpoint/CLI is Designed-only.
 
+Before claiming, the relay asks `KafkaTopicProvisioner` to create/reconcile the topic to three partitions outside any DB transaction. Broker unavailability during application startup leaves events PENDING; provisioning is retried after recovery rather than relying on a one-time startup declaration. Provisioning failures do not consume outbox publishing attempts. Consumer auto-create is disabled, and the local broker also disables auto-create with a three-partition default. KafkaAdmin operation/request/API timeouts are 3 seconds, with 1-second close/retry bounds.
+
 ### 8.3. Availability read
 
 **Designed-only. No availability endpoint or availability cache is currently registered.**
@@ -545,7 +548,7 @@ The following is the v2.0 target error shape. Implemented errors use `type: abou
 
 ## 14. Testing Strategy
 
-The table below retains the v2.0 target test strategy. `TimeSlot`, DST/hours, active/qualified allocation, all implemented HTTP errors, direct database exclusions, adjacent inserts, one/two-resource concurrency, cross-dealership VIN races, transactional rollback, outbox leases/retries/fencing, Kafka key/header/body delivery and broker outage, Redis TTL/hit/corruption/outage, Swagger/health and privacy-safe after-commit logs are **Implemented and tested**. `SlotFinder`, `RequestFingerprint`, cancel, availability and idempotency tests remain **Designed-only**. Verification results are recorded separately so intended coverage is not confused with an executed test.
+The table below retains the v2.0 target test strategy. `TimeSlot`, DST/hours, active/qualified allocation, all implemented HTTP errors, direct database exclusions, adjacent inserts, one/two-resource concurrency, cross-dealership VIN races, transactional rollback, outbox leases/retries/fencing, Kafka key/header/body delivery and broker outage, Redis TTL/hit/corruption/outage, Swagger/health and privacy-safe after-commit logs are **Implemented and tested**. Final review regressions also verify correct Problem Details schemas in OpenAPI and real broker-startup recovery to three partitions. `SlotFinder`, `RequestFingerprint`, cancel, availability and idempotency tests remain **Designed-only**. Verification results are recorded separately so intended coverage is not confused with an executed test.
 
 | Level | What | Examples |
 | :--- | :--- | :--- |

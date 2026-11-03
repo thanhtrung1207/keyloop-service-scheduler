@@ -20,12 +20,14 @@ public class OutboxRelay {
     private final OutboxRepository outbox;
     private final KafkaTemplate<String, String> kafka;
     private final String topic;
+    private final KafkaTopicProvisioner topics;
 
     public OutboxRelay(OutboxRepository outbox, KafkaTemplate<String, String> kafka,
-                       @Value("${scheduler.events.topic}") String topic) {
+                       @Value("${scheduler.events.topic}") String topic, KafkaTopicProvisioner topics) {
         this.outbox = outbox;
         this.kafka = kafka;
         this.topic = topic;
+        this.topics = topics;
     }
 
     @Scheduled(fixedDelayString = "${scheduler.events.poll-delay:500}",
@@ -33,6 +35,9 @@ public class OutboxRelay {
     public void publishPending() {
         if (TransactionSynchronizationManager.isActualTransactionActive()) {
             throw new IllegalStateException("Outbox publishing must run outside a database transaction");
+        }
+        if (!topics.ensureReady()) {
+            return;
         }
         // Claim one at a time so earlier network sends cannot consume a later row's lease.
         for (int i = 0; i < 10; i++) {
@@ -55,6 +60,7 @@ public class OutboxRelay {
                 outbox.markFailed(event, "InterruptedException");
                 return;
             } catch (Exception failure) {
+                topics.invalidate();
                 outbox.markFailed(event, failure.getClass().getSimpleName());
                 log.warn("outbox_retry eventId={} attempts={} failureType={}",
                         event.id(), event.attempts(), failure.getClass().getSimpleName());
