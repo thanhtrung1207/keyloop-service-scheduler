@@ -70,15 +70,15 @@ docs/system-design.md                         Honest MVP/future scope and archit
 **Interfaces:**
 - Produces the runnable `com.keyloop.scheduler.ServiceSchedulerApplication` Spring Boot entry point.
 
-- [ ] **Step 1: Scaffold Java 21 / Spring Boot 4.1.2 build**
+- [x] **Step 1: Scaffold Java 21 / Spring Boot 4.1.2 build**
 
 Add Spring MVC, validation, JDBC, Flyway core + PostgreSQL module, PostgreSQL runtime driver, Spring Boot test, and Testcontainers PostgreSQL/JUnit dependencies. Generate the Maven Wrapper for the selected Maven distribution. Set compiler release to 21.
 
-- [ ] **Step 2: Add application configuration and entry point**
+- [x] **Step 2: Add application configuration and entry point**
 
 Configure PostgreSQL from `SCHEDULER_DB_URL`, `SCHEDULER_DB_USERNAME`, and `SCHEDULER_DB_PASSWORD`, with local defaults matching `compose.yaml` from Task 2. Configure Flyway and a UTC `Clock` bean in `ClockConfig`.
 
-- [ ] **Step 3: Compile the scaffold**
+- [x] **Step 3: Compile the scaffold**
 
 Run: `docker run --rm -v "$PWD":/workspace -v scheduler-maven-cache:/root/.m2 -w /workspace maven:3.9-eclipse-temurin-21 ./mvnw -DskipTests compile`
 Expected: PASS using Java 21 without installing software on the host. The database-backed context is exercised in Task 2 after PostgreSQL exists.
@@ -96,23 +96,23 @@ Expected: PASS using Java 21 without installing software on the host. The databa
 - Produces catalog tables `dealerships`, `service_types`, `service_bays`, `technicians`, `technician_skills`, and `appointments`.
 - Seed IDs are fixed UUIDs documented in README and used by curl examples.
 
-- [ ] **Step 1: Write the schema integration test**
+- [x] **Step 1: Write the schema integration test**
 
 Create `SchemaIntegrationTest` that starts PostgreSQL Testcontainers, applies Flyway migrations, and asserts catalog table and seed counts.
 
-- [ ] **Step 2: Add PostgreSQL schema migration**
+- [x] **Step 2: Add PostgreSQL schema migration**
 
 Use UUID primary keys; store dealership IANA timezone and daily opening/closing times, service duration and required skill, resource status, technician skill rows, and appointments with customer ID, VIN, interval, assigned resource IDs, status, and timestamps. Add `btree_gist` and confirmed-only exclusion constraints for bay, technician, and VIN over `tstzrange(start_time, end_time, '[)')`.
 
-- [ ] **Step 3: Add deterministic local seed data**
+- [x] **Step 3: Add deterministic local seed data**
 
 Seed one dealership, two service types, two active bays, and active technicians with different skills. Ensure one service request can succeed and the catalog also demonstrates no-qualified-technician cases.
 
-- [ ] **Step 4: Add localhost-only PostgreSQL and application Compose services**
+- [x] **Step 4: Add localhost-only PostgreSQL and application Compose services**
 
 Publish PostgreSQL only on `127.0.0.1:5432`, use a named local volume and a readiness healthcheck. Build the application as a Java 21 runtime image and expose its API only on `127.0.0.1:8080`; configure the database URL on the Compose network and wait for PostgreSQL health. Keep credentials local/demo-only and overridable by environment.
 
-- [ ] **Step 5: Verify migration and seed load**
+- [x] **Step 5: Verify migration and seed load**
 
 Run: `./mvnw -Dtest=SchemaIntegrationTest test`
 Expected: Testcontainers starts PostgreSQL, Flyway applies both migrations, and the expected seed rows can be queried.
@@ -133,19 +133,19 @@ Expected: Testcontainers starts PostgreSQL, Flyway applies both migrations, and 
 - `ServiceType(UUID id, String code, String name, int durationMinutes, String requiredSkill)`.
 - `BookingRepository.findDealership(UUID)` and `findServiceType(UUID)` return `Optional` values; `lockDealership(UUID)` obtains a transaction-scoped lock; `hasVinOverlap(String, TimeSlot)` checks a confirmed VIN overlap; `findFreeBay(UUID, TimeSlot)` and `findFreeTechnician(UUID, String, TimeSlot)` return optional allocation records ordered as specified below.
 
-- [ ] **Step 1: Write interval boundary tests**
+- [x] **Step 1: Write interval boundary tests**
 
 Test overlapping intervals, equal endpoints as adjacent/non-overlapping, containment, and invalid zero/negative duration.
 
-- [ ] **Step 2: Implement `TimeSlot`**
+- [x] **Step 2: Implement `TimeSlot`**
 
 Use `Instant` and the half-open overlap predicate from the approved design.
 
-- [ ] **Step 3: Implement JDBC catalog and allocation SQL**
+- [x] **Step 3: Implement JDBC catalog and allocation SQL**
 
 Use `JdbcClient` with bound parameters. Acquire `pg_advisory_xact_lock(hashtextextended(CAST(:dealershipId AS text), 0))`. Select the first active free bay by `bay_code`; select an active free technician joined to the required skill, ordered by skill count, name, and ID. All overlap queries use half-open comparisons.
 
-- [ ] **Step 4: Verify unit and repository integration tests**
+- [x] **Step 4: Verify unit and repository integration tests**
 
 Run: `./mvnw -Dtest=TimeSlotTest,BookingRepositoryIntegrationTest test`
 Expected: PASS, including adjacent resource use and exclusion-constraint rejection on overlap.
@@ -166,19 +166,19 @@ Expected: PASS, including adjacent resource use and exclusion-constraint rejecti
 - `BookingService.get(UUID appointmentId): Appointment`.
 - Stable rejection reasons: `DEALERSHIP_NOT_FOUND`, `SERVICE_TYPE_NOT_FOUND`, `START_TIME_IN_PAST`, `INVALID_VIN`, `VEHICLE_ALREADY_BOOKED`, `NO_SERVICE_BAY_AVAILABLE`, `NO_QUALIFIED_TECHNICIAN_AVAILABLE`, `APPOINTMENT_NOT_FOUND`.
 
-- [ ] **Step 1: Write integration tests for booking outcomes**
+- [x] **Step 1: Write integration tests for booking outcomes**
 
 Cover successful persistence and assignment, unknown catalog IDs, invalid VIN, past start, VIN overlap, no free bay, and no qualified technician. Assert end time equals start plus service duration.
 
-- [ ] **Step 2: Implement booking transaction**
+- [x] **Step 2: Implement booking transaction**
 
 Load catalog metadata, derive the full `TimeSlot`, validate VIN and past start, begin one transaction, take the dealership lock, check VIN overlap, allocate bay and technician, and insert the appointment. Translate PostgreSQL exclusion violations into the appropriate domain conflict so a race cannot become HTTP 500. Add dealership-local opening-hours/DST validation only after the core acceptance tests pass.
 
-- [ ] **Step 3: Implement appointment retrieval**
+- [x] **Step 3: Implement appointment retrieval**
 
 Load appointment and its dealership, service, bay, and technician display fields; return `APPOINTMENT_NOT_FOUND` when absent.
 
-- [ ] **Step 4: Run booking integration tests**
+- [x] **Step 4: Run booking integration tests**
 
 Run: `./mvnw -Dtest=BookingServiceIntegrationTest test`
 Expected: PASS against PostgreSQL Testcontainers.
@@ -195,19 +195,19 @@ Expected: PASS against PostgreSQL Testcontainers.
 - `GET /api/v1/appointments/{id}` returns `200 OK` or `404 Not Found`.
 - Invalid request returns `400 Bad Request`; allocation/overlap conflicts return `409 Conflict`; past requests return `422 Unprocessable Entity`.
 
-- [ ] **Step 1: Write MockMvc API tests**
+- [x] **Step 1: Write MockMvc API tests**
 
 Test successful create and retrieval, invalid JSON, missing fields, malformed timestamp, malformed VIN, unknown appointment ID, past start, and conflict status mapping. Assert RFC 9457 response includes stable `errorCode`.
 
-- [ ] **Step 2: Implement validated controller DTO and routes**
+- [x] **Step 2: Implement validated controller DTO and routes**
 
 Apply Bean Validation to IDs, nonblank customer ID, VIN pattern excluding I/O/Q, and required timestamp. Controller delegates to `BookingService` only.
 
-- [ ] **Step 3: Implement centralized API exception mapping**
+- [x] **Step 3: Implement centralized API exception mapping**
 
 Return Spring `ProblemDetail` with status, title, stable `errorCode`, and field-validation detail. Do not return stack traces or database messages to clients. If optional opening-hours validation is added, map it to 422.
 
-- [ ] **Step 4: Run API tests**
+- [x] **Step 4: Run API tests**
 
 Run: `./mvnw -Dtest=AppointmentApiTest test`
 Expected: PASS; no invalid input or domain conflict produces HTTP 500.
@@ -220,11 +220,11 @@ Expected: PASS; no invalid input or domain conflict produces HTTP 500.
 **Interfaces:**
 - Uses the real PostgreSQL integration-test context and `BookingService.book`.
 
-- [ ] **Step 1: Add concurrent resource-capacity acceptance test**
+- [x] **Step 1: Add concurrent resource-capacity acceptance test**
 
 Submit 12 simultaneous requests with distinct VINs for the same interval to a dealership with two available bays and two qualified technicians. Drop the two resource exclusion constraints in this isolated test database (they are separately covered in Task 3), and use a short insert trigger delay to force the allocation race. Assert exactly two appointments are created on distinct bays and technicians, remaining requests are domain conflicts, and no request fails with an unhandled exception.
 
-- [ ] **Step 2: Run the concurrency test**
+- [x] **Step 2: Run the concurrency test**
 
 Run: `./mvnw -Dtest=ConcurrentBookingTest test`
 Expected: PASS with exactly two confirmed appointments using both resource pairs.
@@ -236,20 +236,20 @@ Expected: PASS with exactly two confirmed appointments using both resource pairs
 - Modify: `docs/system-design.md`
 - Modify: `docs/superpowers/specs/2026-11-03-scheduler-mvp-design.md` only if implementation assumptions materially change
 
-- [ ] **Step 1: Update system design scope/statuses**
+- [x] **Step 1: Update system design scope/statuses**
 
 Mark only the implemented MVP features complete after observing code and test evidence. Mark Redis, Kafka/outbox, full availability search, auth, and advanced calendars as future/out of scope. Preserve architecture diagram, component roles, data flow, technology justifications, observability approach, and AI design narrative required by the PDF.
 
-- [ ] **Step 2: Write README run and demo instructions**
+- [x] **Step 2: Write README run and demo instructions**
 
 Document Java 21, Docker Compose PostgreSQL startup, `./mvnw test`, application startup, API endpoints, seed IDs, success curl, conflict curl, assumptions, limitations, and an AI collaboration narrative that describes actual review/debug/verification rather than planned evidence.
 
-- [ ] **Step 3: Run full automated acceptance and whitespace check**
+- [x] **Step 3: Run full automated acceptance and whitespace check**
 
 Run: `docker run --rm -v "$PWD":/workspace -v scheduler-maven-cache:/root/.m2 -v /var/run/docker.sock:/var/run/docker.sock -w /workspace maven:3.9-eclipse-temurin-21 ./mvnw clean verify`
 Expected: all unit, database/API, and concurrency tests pass using the mounted local Docker engine.
 
-- [ ] **Step 4: Run the local demo**
+- [x] **Step 4: Run the local demo**
 
 Start PostgreSQL and the application using `docker compose up --build`. Create and retrieve an appointment; send an overlapping request and confirm a client conflict response. Record actual command outcomes in the README only if useful and accurate.
 
