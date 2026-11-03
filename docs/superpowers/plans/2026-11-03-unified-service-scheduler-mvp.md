@@ -220,14 +220,14 @@ Expected: PASS; no invalid input or domain conflict produces HTTP 500.
 **Interfaces:**
 - Uses the real PostgreSQL integration-test context and `BookingService.book`.
 
-- [ ] **Step 1: Add concurrent single-slot acceptance test**
+- [ ] **Step 1: Add concurrent resource-capacity acceptance test**
 
-Submit 12 simultaneous requests for the same interval to a dealership with one available bay and one qualified technician. Assert exactly one appointment is created, remaining requests are domain conflicts, and no request fails with an unhandled exception.
+Submit 12 simultaneous requests with distinct VINs for the same interval to a dealership with two available bays and two qualified technicians. Drop the two resource exclusion constraints in this isolated test database (they are separately covered in Task 3), and use a short insert trigger delay to force the allocation race. Assert exactly two appointments are created on distinct bays and technicians, remaining requests are domain conflicts, and no request fails with an unhandled exception.
 
 - [ ] **Step 2: Run the concurrency test**
 
 Run: `./mvnw -Dtest=ConcurrentBookingTest test`
-Expected: PASS with exactly one confirmed appointment.
+Expected: PASS with exactly two confirmed appointments using both resource pairs.
 
 ### Task 7: Complete delivery documentation and run acceptance checks
 
