@@ -73,6 +73,14 @@ class BookingServiceIntegrationTest {
     }
 
     @Test
+    void bookingCreatesDurablePendingOutboxEventInTheSameDatabase() {
+        Appointment appointment = bookingService.book(command(DEALERSHIP_ID, OIL_SERVICE_ID, VIN, START));
+
+        assertThat(jdbc.sql("select count(*) from outbox_events where aggregate_id = :id and status = 'PENDING'")
+                .param("id", appointment.id()).query(Long.class).single()).isEqualTo(1);
+    }
+
+    @Test
     void rejectsUnknownDealership() {
         assertRejection(command(UNKNOWN_ID, OIL_SERVICE_ID, VIN, START), RejectionReason.DEALERSHIP_NOT_FOUND);
     }

@@ -9,6 +9,31 @@ spring:
       maximum-pool-size: 10
   flyway:
     locations: classpath:db/migration
+  kafka:
+    bootstrap-servers: ${SCHEDULER_KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
+    admin:
+      fail-fast: false
+      operation-timeout: 3s
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      properties:
+        enable.idempotence: true
+        max.block.ms: 3000
+        request.timeout.ms: 3000
+        delivery.timeout.ms: 4000
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+
+scheduler:
+  events:
+    enabled: ${SCHEDULER_EVENTS_ENABLED:true}
+    topic: keyloop.ownership.appointments.v1
+    poll-delay: 500
 
 server:
   port: ${SERVER_PORT:8080}

@@ -4,6 +4,7 @@ import com.keyloop.scheduler.booking.BookingRepository.AvailableBay;
 import com.keyloop.scheduler.booking.BookingRepository.AvailableTechnician;
 import com.keyloop.scheduler.catalog.Dealership;
 import com.keyloop.scheduler.catalog.ServiceType;
+import com.keyloop.scheduler.events.OutboxRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,10 +22,12 @@ public class BookingService {
 
     private final BookingRepository repository;
     private final Clock clock;
+    private final OutboxRepository outbox;
 
-    public BookingService(BookingRepository repository, Clock clock) {
+    public BookingService(BookingRepository repository, Clock clock, OutboxRepository outbox) {
         this.repository = repository;
         this.clock = clock;
+        this.outbox = outbox;
     }
 
     @Transactional
@@ -78,6 +81,7 @@ public class BookingService {
 
         try {
             repository.insert(appointment);
+            outbox.enqueue(appointment, serviceType);
         } catch (DataIntegrityViolationException error) {
             throw translateExclusionConstraint(error);
         }
