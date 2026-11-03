@@ -52,6 +52,7 @@ public class BookingService {
                     "Appointment must end on or before 9999-12-31T23:59:59.999999Z");
         }
         TimeSlot slot = new TimeSlot(start, end);
+        OperatingHoursPolicy.validate(dealership, slot);
 
         repository.lockDealership(dealership.id());
 

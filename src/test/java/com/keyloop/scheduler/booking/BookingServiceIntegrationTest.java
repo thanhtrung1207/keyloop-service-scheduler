@@ -55,6 +55,7 @@ class BookingServiceIntegrationTest {
     @BeforeEach
     void clearAppointments() {
         jdbc.sql("delete from appointments").update();
+        jdbc.sql("update service_bays set status = 'ACTIVE'").update();
         jdbc.sql("update technicians set status = 'ACTIVE'").update();
     }
 

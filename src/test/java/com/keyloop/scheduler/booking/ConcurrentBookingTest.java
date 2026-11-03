@@ -123,7 +123,15 @@ class ConcurrentBookingTest {
     void withOneAvailableResourceOnlyOneConcurrentRequestSucceedsWithConstraintsIntact()
             throws InterruptedException, ExecutionException, TimeoutException {
         jdbc.sql("update service_bays set status = 'MAINTENANCE' where bay_code = 'BAY-02'").update();
-        jdbc.sql("update technicians set status = 'INACTIVE' where full_name = 'Alex Morgan'").update();
+        assertThat(jdbc.sql("update technicians set status = 'INACTIVE' where id = :id")
+                .param("id", java.util.UUID.fromString("33333333-3333-3333-3333-333333333301"))
+                .update()).isEqualTo(1);
+        assertThat(jdbc.sql("""
+                select count(*) from technicians t
+                join technician_skills s on s.technician_id = t.id
+                where t.dealership_id = :id and t.status = 'ACTIVE' and s.skill_code = 'OIL_SERVICE'
+                """).param("id", java.util.UUID.fromString(DEALERSHIP_ID)).query(Long.class).single())
+                .isEqualTo(1);
         installShortInsertDelay(false);
 
         List<RejectionReason> outcomes = runConcurrentRequests(REQUEST_COUNT, requestNumber ->

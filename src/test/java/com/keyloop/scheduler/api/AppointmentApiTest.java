@@ -220,6 +220,15 @@ class AppointmentApiTest {
     }
 
     @Test
+    void rejectsBookingAtTwoAmLondonWithOutsideOperatingHours() throws Exception {
+        mvc.perform(post("/api/v1/appointments")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(VALID_REQUEST.replace("2030-01-07T09:00:00Z", "2030-01-07T02:00:00Z")))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.errorCode").value("OUTSIDE_OPERATING_HOURS"));
+    }
+
+    @Test
     void returnsConflictForOverlappingVehicleBooking() throws Exception {
         mvc.perform(post("/api/v1/appointments")
                         .contentType(MediaType.APPLICATION_JSON)

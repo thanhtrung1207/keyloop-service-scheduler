@@ -43,7 +43,7 @@ public class ApiExceptionHandler {
         return switch (reason) {
             case DEALERSHIP_NOT_FOUND, SERVICE_TYPE_NOT_FOUND, APPOINTMENT_NOT_FOUND -> HttpStatus.NOT_FOUND;
             case INVALID_VIN, INVALID_START_TIME -> HttpStatus.BAD_REQUEST;
-            case START_TIME_IN_PAST -> HttpStatus.UNPROCESSABLE_ENTITY;
+            case START_TIME_IN_PAST, OUTSIDE_OPERATING_HOURS -> HttpStatus.UNPROCESSABLE_ENTITY;
             case VEHICLE_ALREADY_BOOKED, NO_SERVICE_BAY_AVAILABLE,
                  NO_QUALIFIED_TECHNICIAN_AVAILABLE -> HttpStatus.CONFLICT;
         };
