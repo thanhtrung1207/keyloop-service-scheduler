@@ -4,6 +4,7 @@ import com.keyloop.scheduler.booking.BookingRepository.AvailableBay;
 import com.keyloop.scheduler.booking.BookingRepository.AvailableTechnician;
 import com.keyloop.scheduler.catalog.Dealership;
 import com.keyloop.scheduler.catalog.ServiceType;
+import com.keyloop.scheduler.catalog.CatalogService;
 import com.keyloop.scheduler.events.OutboxRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -23,18 +24,20 @@ public class BookingService {
     private final BookingRepository repository;
     private final Clock clock;
     private final OutboxRepository outbox;
+    private final CatalogService catalog;
 
-    public BookingService(BookingRepository repository, Clock clock, OutboxRepository outbox) {
+    public BookingService(BookingRepository repository, Clock clock, OutboxRepository outbox, CatalogService catalog) {
         this.repository = repository;
         this.clock = clock;
         this.outbox = outbox;
+        this.catalog = catalog;
     }
 
     @Transactional
     public Appointment book(BookingCommand command) {
-        Dealership dealership = repository.findDealership(command.dealershipId())
+        Dealership dealership = catalog.findDealership(command.dealershipId())
                 .orElseThrow(() -> rejected(RejectionReason.DEALERSHIP_NOT_FOUND, "Dealership was not found"));
-        ServiceType serviceType = repository.findServiceType(command.serviceTypeId())
+        ServiceType serviceType = catalog.findServiceType(command.serviceTypeId())
                 .orElseThrow(() -> rejected(RejectionReason.SERVICE_TYPE_NOT_FOUND, "Service type was not found"));
 
         if (command.vehicleVin() == null || !VIN_PATTERN.matcher(command.vehicleVin()).matches()) {

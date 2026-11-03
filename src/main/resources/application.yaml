@@ -9,6 +9,12 @@ spring:
       maximum-pool-size: 10
   flyway:
     locations: classpath:db/migration
+  data:
+    redis:
+      host: ${SCHEDULER_REDIS_HOST:localhost}
+      port: ${SCHEDULER_REDIS_PORT:6380}
+      connect-timeout: 100ms
+      timeout: 100ms
   kafka:
     bootstrap-servers: ${SCHEDULER_KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
     admin:
@@ -30,6 +36,8 @@ spring:
       enable-auto-commit: false
 
 scheduler:
+  cache:
+    enabled: ${SCHEDULER_CACHE_ENABLED:true}
   events:
     enabled: ${SCHEDULER_EVENTS_ENABLED:true}
     topic: keyloop.ownership.appointments.v1
