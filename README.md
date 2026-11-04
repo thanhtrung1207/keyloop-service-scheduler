@@ -47,13 +47,7 @@ docker compose up -d postgres redis kafka kafka-ui
 SCHEDULER_DB_PASSWORD=scheduler ./mvnw spring-boot:run
 ```
 
-On this workstation a project-local helper is also available:
-
-```bash
-SCHEDULER_DB_PASSWORD=scheduler .tools/mvn21 spring-boot:run
-```
-
-`.tools` is local-only and is not included in Git. For a machine with an unrelated global Maven mirror, use the project's own IntelliJ Maven settings override; no other repository's SDK/settings need changing. Native app binding defaults to localhost; Compose sets the container binding separately.
+Use Java 21 for this project's SDK and Maven importer/runner; configure these per project to preserve other repositories' settings. Native app binding defaults to localhost; Compose sets the container binding separately.
 
 ## API and event demo
 

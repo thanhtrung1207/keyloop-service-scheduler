@@ -287,6 +287,7 @@ Catalog cache entries are validated, not negatively cached, and use 100 ms conne
 - **Headers:** `ce_type`, `ce_id` **Implemented**. `traceparent` propagation is **Designed-only**.
 - **Delivery:** at-least-once, stable CloudEvent `id` (= outbox row id) across retries. A production consumer must durably deduplicate this id. The implemented demo consumer only logs identifiers; it does not perform or deduplicate business side effects.
 - **Producer:** `acks=all`, `enable.idempotence=true`.
+- **JSON presentation:** outbox `payload` remains PostgreSQL `jsonb`; object key order may differ from the illustrative example in Kafka UI. Consumers must use field names, not display order. No schema migration is needed for event correctness.
 
 Event types: `com.keyloop.ownership.appointment.confirmed.v1` **Implemented**; `com.keyloop.ownership.appointment.cancelled.v1` **Designed-only**. The example below illustrates the complete event shape; service catalog values are dynamic. Demo seed service IDs end in `401` (oil) and `402` (brakes), not `403` (illustrative EV service).
 
@@ -454,7 +455,7 @@ Base path `/api/v1`. Full contract served at `/swagger-ui.html` and `/v3/api-doc
 }
 ```
 
-**Response `201`** — same shape as the event `data` object in §6.4.
+**Response `201`** — a flat `Appointment` object, also returned by `GET /appointments/{id}`. Its top-level fields are `id`, `dealershipId`, `dealershipName`, `serviceTypeId`, `serviceTypeCode`, `serviceTypeName`, `serviceBayId`, `bayCode`, `technicianId`, `technicianName`, `customerId`, `vehicleVin`, `startTime`, `endTime`, `status`, and `createdAt`. The event `data` in §6.4 is a separate contract: it uses `appointmentId` and nested `serviceType`, `allocatedServiceBay`, and `assignedTechnician` objects, plus `cancelledAt`.
 
 **Error model (RFC 9457 Problem Details)**
 
@@ -548,15 +549,16 @@ The following is the v2.0 target error shape. Implemented errors use `type: abou
 
 ## 14. Testing Strategy
 
-The table below retains the v2.0 target test strategy. `TimeSlot`, DST/hours, active/qualified allocation, all implemented HTTP errors, direct database exclusions, adjacent inserts, one/two-resource concurrency, cross-dealership VIN races, transactional rollback, outbox leases/retries/fencing, Kafka key/header/body delivery and broker outage, Redis TTL/hit/corruption/outage, Swagger/health and privacy-safe after-commit logs are **Implemented and tested**. Final review regressions also verify correct Problem Details schemas in OpenAPI and real broker-startup recovery to three partitions. `SlotFinder`, `RequestFingerprint`, cancel, availability and idempotency tests remain **Designed-only**. Verification results are recorded separately so intended coverage is not confused with an executed test.
+The table below describes implemented automated coverage; the final row explicitly separates the remaining v2.0 target tests. `TimeSlot`, DST/hours, active/qualified allocation, all implemented HTTP errors, direct database exclusions, adjacent inserts, one/two-resource concurrency, cross-dealership VIN races, transactional rollback, outbox leases/retries/fencing, Kafka key/header/body delivery and broker outage, Redis TTL/hit/corruption/outage, Swagger/health and privacy-safe after-commit logs are **Implemented and tested**. Final review regressions also verify correct Problem Details schemas in OpenAPI and real broker-startup recovery to three partitions. `SlotFinder`, `RequestFingerprint`, cancel, availability and idempotency tests remain **Designed-only**. Verification results are recorded separately so intended coverage is not confused with an executed test.
 
-| Level | What | Examples |
+| Level | What | Implemented coverage / explicit future targets |
 | :--- | :--- | :--- |
-| Unit (no Spring) | Pure domain rules | `TimeSlot` overlap incl. back-to-back & containment; `OperatingHoursPolicy` incl. DST (London summer time) and past times; `SlotFinder` grid & busy resources; `RequestFingerprint` stability |
-| Integration (Testcontainers) | Real Postgres/Redis/Kafka | happy path allocation & fewest-skills technician choice; each `409`/`422`; cancel frees slot; idempotent replay and key reuse; availability excludes booked slots |
-| Concurrency | The core guarantee | 20 threads book the same slot at a 1-bay dealership → exactly 1 × `201`, 19 × `409`, 1 row in DB |
-| Messaging | Outbox → Kafka | booking produces a CloudEvent with `key = appointmentId`, `ce_type` header; outbox row becomes `PUBLISHED` |
-| API | MockMvc over the full context | status codes, Problem Details shape, `Location` header, validation errors |
+| Unit (no Spring) | Pure domain rules | `TimeSlot` overlap incl. back-to-back & containment; `OperatingHoursPolicy` exact boundaries, outside-hours rejection, London summer conversion and DST gaps/overlaps |
+| Integration (Testcontainers) | Real Postgres/Redis/Kafka | happy path allocation & fewest-skills technician choice; past-time/resource rejection; database exclusions; atomic appointment/outbox rollback; Redis TTL/hit/corruption/outage |
+| Concurrency | `ConcurrentBookingTest`, direct service calls | 12 simultaneous requests with one available resource pair and constraints intact → 1 confirmed, 11 resource conflicts, 1 appointment row. The two-pair lock-isolation test → 2 confirmed, 10 conflicts, 2 distinct bays/technicians; it temporarily removes resource exclusions to isolate the dealership lock. A separate 2-request cross-dealership same-VIN race, with constraints intact, permits only 1 booking. API tests separately verify `201`/`409` mappings. |
+| Messaging | Outbox → Kafka | CloudEvent with `key = appointmentId`, `ce_type`/`ce_id` headers and correct body; PUBLISHED status; retry/lease fencing; broker outage and startup recovery to 3 partitions |
+| API | MockMvc over the full context | status codes, Problem Details/errorCode, `Location` header, validation errors, Swagger/OpenAPI error schemas, health and redacted after-commit decision logs |
+| Designed-only | Future v2.0 targets, not implemented or tested | `SlotFinder` grid/busy resources; `RequestFingerprint` stability; cancel frees slot; idempotent replay/key reuse; availability excludes booked slots |
 
 ---
 
@@ -573,7 +575,7 @@ The table below retains the v2.0 target test strategy. `TimeSlot`, DST/hours, ac
 3. **My decisions (human ownership).**
    - Verified each claim against PostgreSQL semantics (READ COMMITTED snapshots per statement, row locks vs. predicate locks) before accepting it.
    - Chose *advisory lock per dealership + exclusion constraints* over `SERIALIZABLE` or optimistic retry, after weighing the alternatives in §7.3.
-   - **Kept Redis and Kafka**, but re-scoped Redis to a pure accelerator (catalog, availability, idempotency replay) with Postgres as the authority, and added Kafka UI so event timing and payloads are observable during the demo.
+   - **Kept Redis and Kafka**, but re-scoped Redis to a pure accelerator (catalog: **Implemented**; availability/idempotency replay: **Designed-only**) with Postgres as the authority, and added Kafka UI so event timing and payloads are observable during the demo.
    - Removed the Redisson lock; changed the Kafka key to `appointmentId`.
 4. **Original verification plan (target coverage).** Every rule in §3 was intended to map to an automated test (§14); the concurrency test against real Postgres is the acceptance gate for the AI-generated allocation code.
 
